@@ -54,18 +54,22 @@
 - [x] **T033** Проверить fail-fast, сообщения, отсутствие traceback/final summary и exit codes для всех категорий ошибок. [ERR-002] [ERR-003] [ERR-004] [ERR-005] [ERR-006]
 - [x] **T034** Проверить, что весь automated test suite не использует реальную сеть, реальные задержки или nondeterministic clock. [NFR-003]
 - [x] **T034A** Проверить тесты core logic на ложную уверенность: подсчёт фактических chunks при неверном `Content-Length`, aggregate throughput из total bytes / total time и десятичные единицы MB/Mbps. [FR-007] [FR-009] [FR-010] [FR-011] [NFR-003]
+- [x] **T034B** Добавить CLI regression tests через настоящий measurement path и `httpx.MockTransport`: успешный redirect, HTTP status, timeout и connection failure; проверить exit codes, fail-fast и отсутствие ложного итогового блока. [FR-012] [FR-013] [FR-014] [ERR-002] [ERR-003] [ERR-004] [ERR-006] [NFR-003]
 
 ## Этап 7. README
 
-- [ ] **T035** Написать русскоязычный README с требованиями Python 3.12+, установкой через `uv`, запуском `internet-speed-meter URL` и командами проверок. [FR-001] [NFR-001] [NFR-004]
-- [ ] **T036** Описать единицы, aggregate throughput, redirects, timeout, ошибки и ограничение относительно ISP speed test. [FR-009] [FR-010] [FR-011] [FR-014] [ERR-002] [ERR-003] [ERR-004]
+- [x] **T035** Написать русскоязычный README с требованиями Python 3.12+, установкой через `uv`, запуском `internet-speed-meter URL` и командами проверок. [FR-001] [NFR-001] [NFR-004]
+- [x] **T036** Описать единицы, aggregate throughput, redirects, timeout, ошибки и ограничение относительно ISP speed test. [FR-009] [FR-010] [FR-011] [FR-014] [ERR-002] [ERR-003] [ERR-004]
 
-## Этап 8. CI
+## Этап 8. Development tooling и CI
 
-- [ ] **T037** Добавить минимальный GitHub Actions job для Python 3.12: `uv sync --locked --dev`, Ruff format/lint, mypy и pytest. [NFR-001] [NFR-003]
+- [x] **T037** Добавить небольшой Makefile с targets `help`, `install`, `format`, `format-check`, `lint`, `typecheck`, `test`, `check` и `run URL=...`, сохранив прямые `uv`-команды основным доступным интерфейсом. [NFR-001] [NFR-003]
+- [x] **T038** Добавить минимальный GitHub Actions job для Python 3.12: `uv sync --locked --dev`, Ruff format/lint, mypy и pytest. [NFR-001] [NFR-003]
 
 ## Этап 9. Final verification
 
-- [ ] **T038** Выполнить полный набор `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy src` и `uv run pytest`. [NFR-003]
-- [ ] **T039** Повторно сопоставить все FR/ERR/NFR с реализацией и automated tests, устранив пробелы до завершения. [FR-001] [FR-002] [FR-003] [FR-004] [FR-005] [FR-006] [FR-007] [FR-008] [FR-009] [FR-010] [FR-011] [FR-012] [FR-013] [FR-014] [ERR-001] [ERR-002] [ERR-003] [ERR-004] [ERR-005] [ERR-006] [NFR-001] [NFR-002] [NFR-003] [NFR-004] [NFR-005]
-- [ ] **T040** Провести финальное ревью русского пользовательского текста, английских identifiers, минимального scope и отсутствия запрещённых технологий/архитектурных слоёв. [NFR-004] [NFR-005]
+- [x] **T039** Выполнить полный набор `uv sync`, `uv run ruff format --check .`, `uv run ruff check .`, `uv run mypy src`, `uv run pytest` и, при доступном Make, `make check`. [NFR-003]
+- [x] **T040** Повторно сопоставить все FR/ERR/NFR с реализацией и automated tests, устранив пробелы до завершения. [FR-001] [FR-002] [FR-003] [FR-004] [FR-005] [FR-006] [FR-007] [FR-008] [FR-009] [FR-010] [FR-011] [FR-012] [FR-013] [FR-014] [ERR-001] [ERR-002] [ERR-003] [ERR-004] [ERR-005] [ERR-006] [NFR-001] [NFR-002] [NFR-003] [NFR-004] [NFR-005]
+- [x] **T041** Провести финальное ревью русского пользовательского текста, английских identifiers, минимального scope и отсутствия запрещённых технологий/архитектурных слоёв. [NFR-004] [NFR-005]
+- [x] **T042** Проверить `--help`, invalid URL и unsupported scheme вручную; при доступном интернете выполнить один успешный smoke run. [FR-001] [FR-002] [ERR-001] [ERR-006]
+- [x] **T043** Проверить repository hygiene и Git status/history: не отслеживать IDE, caches, environments, временные файлы и secrets. [NFR-003] [NFR-005]

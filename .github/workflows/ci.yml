@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Получить исходный код
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Установить uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.15"
+          enable-cache: true
+
+      - name: Установить Python
+        run: uv python install 3.12
+
+      - name: Синхронизировать зависимости
+        run: uv sync --locked --dev
+
+      - name: Проверить форматирование
+        run: uv run ruff format --check .
+
+      - name: Запустить Ruff lint
+        run: uv run ruff check .
+
+      - name: Проверить типы
+        run: uv run mypy src
+
+      - name: Запустить тесты
+        run: uv run pytest

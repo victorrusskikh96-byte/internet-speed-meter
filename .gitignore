@@ -20,3 +20,10 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Локальная конфигурация и временные файлы
+.env
+.env.*
+!.env.example
+*.tmp
+*.swp

@@ -1,11 +1,13 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
+import httpx
 import pytest
 
 from internet_speed_meter import cli
 from internet_speed_meter.calculation import RequestMeasurement
 from internet_speed_meter.measurement import MeasurementError
+from internet_speed_meter.measurement import measure_requests as run_measure_requests
 
 
 class FakeClient:
@@ -19,6 +21,45 @@ class FakeClient:
 
     def __exit__(self, *args: Any) -> None:
         self.closed = True
+
+
+class DeterministicTimer:
+    def __init__(self, values: list[float]) -> None:
+        self._values = iter(values)
+
+    def __call__(self) -> float:
+        return next(self._values)
+
+
+class StaticStream(httpx.SyncByteStream):
+    def __init__(self, *chunks: bytes) -> None:
+        self._chunks = chunks
+
+    def __iter__(self) -> Iterator[bytes]:
+        yield from self._chunks
+
+
+def configure_mock_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    handler: Callable[[httpx.Request], httpx.Response],
+    timer_values: list[float],
+) -> httpx.Client:
+    client = httpx.Client(
+        transport=httpx.MockTransport(handler),
+        follow_redirects=True,
+        max_redirects=20,
+    )
+    timer = DeterministicTimer(timer_values)
+
+    def deterministic_measure_requests(
+        http_client: httpx.Client,
+        url: str,
+    ) -> Iterator[RequestMeasurement]:
+        return run_measure_requests(http_client, url, timer=timer)
+
+    monkeypatch.setattr(cli, "create_client", lambda: client)
+    monkeypatch.setattr(cli, "measure_requests", deterministic_measure_requests)
+    return client
 
 
 @pytest.mark.parametrize(
@@ -75,6 +116,52 @@ def test_successful_cli_prints_progress_and_summary(
         "Скачано: 5500000 байт (5.500 MB)",
         "Средняя скорость: 1.000 MB/s (8.000 Mbps)",
     ]
+
+
+def test_successful_cli_follows_redirects_through_mock_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    requested_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_paths.append(request.url.path)
+        if request.url.path == "/start":
+            return httpx.Response(
+                302,
+                headers={"Location": "/final"},
+                stream=StaticStream(b"redirect body"),
+                request=request,
+            )
+        return httpx.Response(
+            200,
+            stream=StaticStream(b"x" * 100_000),
+            request=request,
+        )
+
+    client = configure_mock_transport(
+        monkeypatch,
+        handler,
+        [float(value) for value in range(20)],
+    )
+
+    exit_code = cli.main(["https://example.test/start"])
+
+    captured = capsys.readouterr()
+    progress_lines = [line for line in captured.out.splitlines() if line.startswith("Запрос ")]
+    assert exit_code == 0
+    assert client.is_closed is True
+    assert requested_paths == ["/start", "/final"] * 10
+    assert len(progress_lines) == 10
+    for request_number, line in enumerate(progress_lines, start=1):
+        assert f"Запрос {request_number}/10" in line
+        assert "1.000 с" in line
+        assert "100000 байт" in line
+    assert "Запросов: 10" in captured.out
+    assert "Среднее время запроса: 1.000 с" in captured.out
+    assert "Скачано: 1000000 байт (1.000 MB)" in captured.out
+    assert "Средняя скорость: 0.100 MB/s (0.800 Mbps)" in captured.out
+    assert captured.err == ""
 
 
 @pytest.mark.parametrize("help_option", ["-h", "--help"])
@@ -184,6 +271,53 @@ def test_expected_measurement_error_is_fail_fast_without_summary(
     assert "Ошибка при выполнении запроса 3/10" in captured.err
     assert expected_text in captured.err
     assert "Итоги:" not in captured.out
+    assert "Traceback" not in captured.err
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_text"),
+    [
+        ("http_status", "HTTP status 503"),
+        ("timeout", "Превышено время ожидания HTTP-запроса"),
+        ("connection", "Ошибка HTTP-запроса: соединение отклонено"),
+    ],
+)
+def test_cli_reports_transport_failures_without_successful_summary(
+    failure: str,
+    expected_text: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 1:
+            return httpx.Response(200, stream=StaticStream(b"first"), request=request)
+        if failure == "http_status":
+            return httpx.Response(503, stream=StaticStream(b"unavailable"), request=request)
+        if failure == "timeout":
+            raise httpx.ReadTimeout("истекло время ожидания", request=request)
+        raise httpx.ConnectError("соединение отклонено", request=request)
+
+    client = configure_mock_transport(
+        monkeypatch,
+        handler,
+        [float(value) for value in range(4)],
+    )
+
+    exit_code = cli.main(["https://example.test/file"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert client.is_closed is True
+    assert request_count == 2
+    assert captured.out.splitlines() == ["Запрос 1/10: 1.000 с, 5 байт"]
+    assert "Ошибка при выполнении запроса 2/10" in captured.err
+    assert expected_text in captured.err
+    assert "Итоги:" not in captured.out
+    assert "Средняя скорость:" not in captured.out
     assert "Traceback" not in captured.err
 
 

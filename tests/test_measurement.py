@@ -278,12 +278,42 @@ def test_redirect_bodies_are_consumed_before_next_exchange_and_not_counted() -> 
     assert events.count("read-finish:final") == 10
 
 
-def test_http_error_is_reported_only_after_body_is_consumed() -> None:
+@pytest.mark.parametrize("status_code", [301, 302, 303, 307, 308])
+def test_standard_redirect_statuses_are_followed(status_code: int) -> None:
+    requested_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_paths.append(request.url.path)
+        if request.url.path == "/start":
+            return httpx.Response(
+                status_code,
+                headers={"Location": "/final"},
+                request=request,
+            )
+        return httpx.Response(
+            200,
+            stream=RecordingStream((b"final",), [], "final"),
+            request=request,
+        )
+
+    timer = Timer([float(value) for value in range(20)])
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        follow_redirects=True,
+    ) as client:
+        results = tuple(measure_requests(client, "https://example.test/start", timer=timer))
+
+    assert requested_paths == ["/start", "/final"] * 10
+    assert all(result.downloaded_bytes == len(b"final") for result in results)
+
+
+@pytest.mark.parametrize("status_code", [404, 500])
+def test_http_error_is_reported_only_after_body_is_consumed(status_code: int) -> None:
     events: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
-            503,
+            status_code,
             stream=RecordingStream((b"error", b" body"), events, "error"),
             request=request,
         )
@@ -294,7 +324,7 @@ def test_http_error_is_reported_only_after_body_is_consumed() -> None:
             "https://example.test/failure",
             timer=Timer([2.0, 3.0]),
         )
-        with pytest.raises(MeasurementError, match="HTTP status 503"):
+        with pytest.raises(MeasurementError, match=f"HTTP status {status_code}"):
             next(results)
 
     assert "read-finish:error" in events
@@ -327,7 +357,10 @@ def test_non_positive_duration_is_rejected_after_full_body(finished_at: float) -
     ("exception", "message"),
     [
         (httpx.ReadTimeout("таймаут"), "Превышено время ожидания"),
-        (httpx.ConnectError("нет соединения"), "Ошибка HTTP-запроса"),
+        (httpx.ConnectError("DNS-имя не найдено"), "Ошибка HTTP-запроса"),
+        (httpx.ConnectError("соединение отклонено"), "Ошибка HTTP-запроса"),
+        (httpx.ConnectError("ошибка TLS"), "Ошибка HTTP-запроса"),
+        (httpx.RemoteProtocolError("ошибка протокола"), "Ошибка HTTP-запроса"),
     ],
 )
 def test_request_errors_are_converted(
