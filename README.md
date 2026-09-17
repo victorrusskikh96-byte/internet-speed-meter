@@ -22,7 +22,7 @@ Make можно использовать как необязательный у�
 ## Установка
 
 ```console
-git clone <URL-репозитория>
+git clone https://github.com/victorrusskikh96-byte/internet-speed-meter.git
 cd Speed_Testester_testTask
 uv sync
 ```
@@ -34,11 +34,13 @@ uv sync
 Передайте один абсолютный HTTP- или HTTPS-URL большого ресурса:
 
 ```console
-uv run internet-speed-meter https://example.com/path/to/large-file.bin
+uv run internet-speed-meter "https://example.com/path/to/large-file.bin"
 ```
 
 URL в примере является условным: для содержательного измерения выберите доступный
-вам достаточно большой ресурс. Фрагмент URL удаляется до запроса. Программа следует
+вам достаточно большой ресурс. 
+ВАЖНО: URL должен быть в "кавычках"
+Фрагмент URL удаляется до запроса. Программа следует
 HTTP redirect, включая переходы между HTTP и HTTPS, но ограничивает одну цепочку
 20 переходами.
 
