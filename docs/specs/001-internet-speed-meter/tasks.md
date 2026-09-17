@@ -32,27 +32,27 @@
 
 ## Этап 4. CLI
 
-- [ ] **T020** Реализовать русскоязычный `argparse` с одним обязательным позиционным `URL`, `-h` и `--help`. [FR-001] [ERR-001] [NFR-004]
-- [ ] **T021** Реализовать локальную HTTP/HTTPS URL validation, проверку hostname/port и удаление fragment до сетевого вызова. [FR-002] [ERR-001]
-- [ ] **T022** Реализовать последовательное потребление 10 core-результатов через один context-managed client без request body и retries. [FR-003] [FR-004] [NFR-002]
-- [ ] **T023** После каждой успешной полной попытки выводить в `stdout` progress `N/10`, duration и bytes. [FR-012] [NFR-004]
-- [ ] **T024** После 10 попыток выводить русскоязычные итоги с округлением только при отображении до трёх знаков. [FR-013] [NFR-004]
-- [ ] **T025** Реализовать entry point `main()` и exit codes 0/1/2 согласно результату запуска. [ERR-006]
+- [x] **T020** Реализовать русскоязычный `argparse` с одним обязательным позиционным `URL`, `-h` и `--help`. [FR-001] [ERR-001] [NFR-004]
+- [x] **T021** Реализовать локальную HTTP/HTTPS URL validation, проверку hostname/port и удаление fragment до сетевого вызова. [FR-002] [ERR-001]
+- [x] **T022** Реализовать последовательное потребление 10 core-результатов через один context-managed client без request body и retries. [FR-003] [FR-004] [NFR-002]
+- [x] **T023** После каждой успешной полной попытки выводить в `stdout` progress `N/10`, duration и bytes. [FR-012] [NFR-004]
+- [x] **T024** После 10 попыток выводить русскоязычные итоги с округлением только при отображении до трёх знаков. [FR-013] [NFR-004]
+- [x] **T025** Реализовать entry point `main()` и exit codes 0/1/2 согласно результату запуска. [ERR-006]
 
 ## Этап 5. Error handling
 
-- [ ] **T026** Выводить в `stderr` номер попытки и status code для HTTP 4xx/5xx после полного body. [ERR-002]
-- [ ] **T027** Отдельно преобразовывать `httpx.TimeoutException` в русскоязычное timeout-сообщение без retry. [ERR-003] [NFR-004]
-- [ ] **T028** Преобразовывать connection, DNS, TLS, protocol и redirect failures в краткое русскоязычное network error без traceback. [ERR-004] [NFR-004]
-- [ ] **T029** Реализовать fail-fast: не печатать progress неуспешной попытки и итоги, не начинать следующие запросы, сохранять предыдущий progress. [ERR-002] [ERR-003] [ERR-004] [ERR-005]
+- [x] **T026** Выводить в `stderr` номер попытки и status code для HTTP 4xx/5xx после полного body. [ERR-002]
+- [x] **T027** Отдельно преобразовывать `httpx.TimeoutException` в русскоязычное timeout-сообщение без retry. [ERR-003] [NFR-004]
+- [x] **T028** Преобразовывать connection, DNS, TLS, protocol и redirect failures в краткое русскоязычное network error без traceback. [ERR-004] [NFR-004]
+- [x] **T029** Реализовать fail-fast: не печатать progress неуспешной попытки и итоги, не начинать следующие запросы, сохранять предыдущий progress. [ERR-002] [ERR-003] [ERR-004] [ERR-005]
 
 ## Этап 6. Tests
 
-- [ ] **T030** Проверить CLI arguments/help, допустимые схемы без учёта регистра и отклонение invalid URL до HTTP-вызова. [FR-001] [FR-002] [ERR-001]
-- [ ] **T031** Доказать тестами ровно 10 строго последовательных GET, один client lifecycle и полное чтение body до следующего обмена. [FR-003] [FR-004] [FR-005] [NFR-002]
-- [ ] **T032** Проверить 10 progress lines, итоговые labels, значения и display-only rounding в `stdout`. [FR-008] [FR-009] [FR-010] [FR-011] [FR-012] [FR-013]
-- [ ] **T033** Проверить fail-fast, сообщения, отсутствие traceback/final summary и exit codes для всех категорий ошибок. [ERR-002] [ERR-003] [ERR-004] [ERR-005] [ERR-006]
-- [ ] **T034** Проверить, что весь automated test suite не использует реальную сеть, реальные задержки или nondeterministic clock. [NFR-003]
+- [x] **T030** Проверить CLI arguments/help, допустимые схемы без учёта регистра и отклонение invalid URL до HTTP-вызова. [FR-001] [FR-002] [ERR-001]
+- [x] **T031** Доказать тестами ровно 10 строго последовательных GET, один client lifecycle и полное чтение body до следующего обмена. [FR-003] [FR-004] [FR-005] [NFR-002]
+- [x] **T032** Проверить 10 progress lines, итоговые labels, значения и display-only rounding в `stdout`. [FR-008] [FR-009] [FR-010] [FR-011] [FR-012] [FR-013]
+- [x] **T033** Проверить fail-fast, сообщения, отсутствие traceback/final summary и exit codes для всех категорий ошибок. [ERR-002] [ERR-003] [ERR-004] [ERR-005] [ERR-006]
+- [x] **T034** Проверить, что весь automated test suite не использует реальную сеть, реальные задержки или nondeterministic clock. [NFR-003]
 
 ## Этап 7. README
 
