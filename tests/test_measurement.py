@@ -11,6 +11,53 @@ from internet_speed_meter.measurement import (
 )
 
 
+class ActiveResponseTracker:
+    def __init__(self) -> None:
+        self.active_responses = 0
+        self.max_active_responses = 0
+        self.fully_read_bodies = 0
+        self.closed_responses = 0
+
+    def open_response(self) -> None:
+        self.active_responses += 1
+        self.max_active_responses = max(
+            self.max_active_responses,
+            self.active_responses,
+        )
+        assert self.active_responses == 1, "Обнаружены одновременно активные ответы"
+
+    def finish_body(self) -> None:
+        self.fully_read_bodies += 1
+
+    def close_response(self) -> None:
+        self.active_responses -= 1
+        self.closed_responses += 1
+
+
+class TrackedStream(httpx.SyncByteStream):
+    def __init__(
+        self,
+        chunks: tuple[bytes, ...],
+        tracker: ActiveResponseTracker,
+    ) -> None:
+        self._chunks = chunks
+        self._tracker = tracker
+        self._fully_read = False
+        self._closed = False
+        self._tracker.open_response()
+
+    def __iter__(self) -> Iterator[bytes]:
+        yield from self._chunks
+        self._fully_read = True
+        self._tracker.finish_body()
+
+    def close(self) -> None:
+        assert self._fully_read, "Ответ закрыт до полного чтения body"
+        if not self._closed:
+            self._tracker.close_response()
+            self._closed = True
+
+
 class RecordingStream(httpx.SyncByteStream):
     def __init__(self, chunks: tuple[bytes, ...], events: list[str], name: str) -> None:
         self._chunks = chunks
@@ -35,6 +82,32 @@ class Timer:
 
     def __call__(self) -> float:
         return next(self._values)
+
+
+def test_ten_response_lifecycles_do_not_overlap_and_bodies_are_fully_read() -> None:
+    tracker = ActiveResponseTracker()
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        assert tracker.active_responses == 0, "Новый запрос начат до закрытия прошлого ответа"
+        request_count += 1
+        return httpx.Response(
+            200,
+            stream=TrackedStream((b"part-one", b"part-two"), tracker),
+            request=request,
+        )
+
+    timer = Timer([float(value) for value in range(20)])
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        results = tuple(measure_requests(client, "https://example.test/file", timer=timer))
+
+    assert len(results) == 10
+    assert request_count == 10
+    assert tracker.max_active_responses == 1
+    assert tracker.fully_read_bodies == 10
+    assert tracker.closed_responses == 10
+    assert tracker.active_responses == 0
 
 
 def test_measure_requests_performs_ten_sequential_gets_and_counts_raw_chunks() -> None:
@@ -67,6 +140,34 @@ def test_measure_requests_performs_ten_sequential_gets_and_counts_raw_chunks() -
     assert len(results) == 10
     assert [result.duration_seconds for result in results] == [1.0] * 10
     assert [result.downloaded_bytes for result in results] == [5] * 10
+
+
+def test_varying_body_sizes_are_counted_from_stream_despite_content_length() -> None:
+    body_sizes = (0, 1, 2, 3, 10, 100, 1_000, 10_000, 100_000, 1_000_000)
+    request_index = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_index
+        body = b"x" * body_sizes[request_index]
+        request_index += 1
+        split_at = len(body) // 2
+        return httpx.Response(
+            200,
+            headers={"Content-Length": "42"},
+            stream=RecordingStream(
+                (body[:split_at], body[split_at:]),
+                [],
+                f"body-{request_index}",
+            ),
+            request=request,
+        )
+
+    timer = Timer([float(value) for value in range(20)])
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        results = tuple(measure_requests(client, "https://example.test/file", timer=timer))
+
+    assert tuple(result.downloaded_bytes for result in results) == body_sizes
+    assert sum(result.downloaded_bytes for result in results) == 1_111_116
 
 
 def test_timer_wraps_request_and_full_body_read() -> None:

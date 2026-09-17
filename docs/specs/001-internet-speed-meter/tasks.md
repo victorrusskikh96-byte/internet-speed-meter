@@ -49,10 +49,11 @@
 ## Этап 6. Tests
 
 - [x] **T030** Проверить CLI arguments/help, допустимые схемы без учёта регистра и отклонение invalid URL до HTTP-вызова. [FR-001] [FR-002] [ERR-001]
-- [x] **T031** Доказать тестами ровно 10 строго последовательных GET, один client lifecycle и полное чтение body до следующего обмена. [FR-003] [FR-004] [FR-005] [NFR-002]
+- [x] **T031** Доказать тестами ровно 10 строго последовательных GET, один client lifecycle и полное чтение body до следующего обмена; явным счётчиком активных response streams обнаруживать любое перекрытие. [FR-003] [FR-004] [FR-005] [NFR-002]
 - [x] **T032** Проверить 10 progress lines, итоговые labels, значения и display-only rounding в `stdout`. [FR-008] [FR-009] [FR-010] [FR-011] [FR-012] [FR-013]
 - [x] **T033** Проверить fail-fast, сообщения, отсутствие traceback/final summary и exit codes для всех категорий ошибок. [ERR-002] [ERR-003] [ERR-004] [ERR-005] [ERR-006]
 - [x] **T034** Проверить, что весь automated test suite не использует реальную сеть, реальные задержки или nondeterministic clock. [NFR-003]
+- [x] **T034A** Проверить тесты core logic на ложную уверенность: подсчёт фактических chunks при неверном `Content-Length`, aggregate throughput из total bytes / total time и десятичные единицы MB/Mbps. [FR-007] [FR-009] [FR-010] [FR-011] [NFR-003]
 
 ## Этап 7. README
 
